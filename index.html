@@ -64,13 +64,8 @@ var JUMP = {
         JUMP.STAGES.set(JUMP.STAGES.LOAD);
 
         JUMP.load.image("block", "res/land_block.png");
-        JUMP.load.image("water", "res/land_water.png");
-        JUMP.load.image("back", "res/back.png");
-        JUMP.load.image("back", "res/back1.png");
-        JUMP.load.image("back", "res/back2.png");
-        JUMP.load.image("back", "res/back3.png");
-        JUMP.load.image("back", "res/back4.png");
-        JUMP.load.audio("sound", "res/audio.mp3");
+        // JUMP.load.image("water", "res/land_water.png");
+        // JUMP.load.audio("sound", "res/audio.mp3");
 
         JUMP.init();
         JUMP.resize();
@@ -79,7 +74,7 @@ var JUMP = {
 
 	init: function() {
         JUMP.Player.init();
-		platforms.push(new Platform(205, 690, 70, 70, "static"));
+		platforms.push(new Platform(JUMP.WIDTH / 2, 750, 70, 70, "static", JUMP.load.images['block']));
 		generatePlatforms();
 	},
 
@@ -126,7 +121,7 @@ var JUMP = {
     loop: function() {
         JUMP.update();
         JUMP.render();
-        JUMP.load.render();
+
         window.requestAnimFrame(JUMP.loop);
     }
 };
@@ -162,10 +157,10 @@ JUMP.load = {
 		JUMP.Draw.roundRect(40, 400, 400, 50, 10, false, "#000");
 		if (percent) {
 			var dx = 390 * percent - this.barWidth,
-				vx = dx * 0.025;
+				vx = dx * 0.04;
 			this.barWidth += vx;
 			JUMP.Draw.roundRect(45, 405, this.barWidth, 40, 6, true, "#000");
-			JUMP.Draw.text(~~(percent * 100) + "%", JUMP.WIDTH / 2 + 2, 433, 25, "#83d0bc");
+			JUMP.Draw.centeredText(~~(percent * 100) + "%", JUMP.WIDTH / 2 + 2, 433, 25, "#83d0bc");
 		}
 	}
 };
@@ -222,7 +217,7 @@ JUMP.Player = {
 			this.x = this.constX - ~~(100 * per);
 		}
 		JUMP.Draw.rect(this.x, this.y, this.width, this.height, "#7484b0");
-		JUMP.Draw.rect(this.target.x, this.target.y, 40, 40, "red");
+		// JUMP.Draw.rect(this.target.x, this.target.y, 40, 40, "red");
 	}
 };
 
@@ -232,16 +227,21 @@ var Platform = function(x, y, width, height, type, image) {
 	this.y = y || 0;
 	this.constX = this.x;
 	this.constY = this.y;
-	this.width = width || 60;
-	this.height = height || 60;
+	this.width = image.width || width;
+	this.height = image.height || height;
+	this.colWidth = this.width * 0.8;
+	this.colHeight = this.height * 0.3;
+	this.colX = this.x - this.colWidth / 2;
+	this.colY = this.y - this.height * 0.4;
+	this.image = image;
 
 	this.update = function() {
 
 	};
 
 	this.render = function() {
-		//JUMP.Draw.rect(this.x, this.y, this.width, this.height, "#97de9e");
-		JUMP.ctx.drawImage(JUMP.image['block'], 0, 0);
+		JUMP.Draw.drawImage(this.image, this.x, this.y, this.width, this.height);
+		// JUMP.Draw.rect(this.colX, this.colY, this.colWidth, this.colHeight, "#97de9e");
 	};
 };
 
@@ -290,7 +290,20 @@ JUMP.Draw = {
     text: function(string, x, y, size, col) {
         JUMP.ctx.font = 'bold '+size+'px Monospace';
         JUMP.ctx.fillStyle = col;
+        JUMP.ctx.fillText(string, x, y);
+    },
+
+    centeredText: function(string, x, y, size, col) {
+        JUMP.ctx.font = 'bold '+size+'px Monospace';
+        JUMP.ctx.fillStyle = col;
         JUMP.ctx.fillText(string, x - JUMP.ctx.measureText(string).width / 2, y);
+    },
+
+    drawImage: function(image, x, y, width, height) {
+    	JUMP.ctx.save();
+    	JUMP.ctx.translate(x - width / 2, y - height / 2);
+    	JUMP.ctx.drawImage(image, 0, 0, width, height);
+    	JUMP.ctx.restore();
     }
 };
 
@@ -316,8 +329,10 @@ JUMP.STAGES = {
 
         switch (this.currentStage) {
 	    	case JUMP.STAGES.LOAD:
-	            // if (JUMP.image.totalCount == JUMP.image.count)
-	        		// this.set(JUMP.STAGES.GAMEPLAY);
+	            if (Math.round(JUMP.load.barWidth) == 390) {
+	        		this.set(JUMP.STAGES.GAMEPLAY);
+	        		// JUMP.load.audios["sound"].play();
+	            }
 
 	        	break;
             case this.MENU:
@@ -339,6 +354,7 @@ JUMP.STAGES = {
 	            				vy = dy * 0.03;
 
 	            			platforms[j].y += vy;
+	            			platforms[j].colY += vy;
 	            		}
 	            		JUMP.Player.y += vy;
 	            		JUMP.Player.target.y += vy;
@@ -371,10 +387,10 @@ JUMP.STAGES = {
     render: function() {
         switch (this.currentStage) {
 	    	case JUMP.STAGES.LOAD:
-
+        		JUMP.load.render();
 	        	break;
             case this.MENU:
-
+            	JUMP.Draw.text("Everything is loaded!!", 20, 100, 30, "#000");
                 break;
             case this.GAMEPLAY:
             	JUMP.Draw.rect(0, 0, JUMP.WIDTH, JUMP.HEIGHT, "#59d8f3");
@@ -387,11 +403,11 @@ JUMP.STAGES = {
     }
 };
 
-JUMP.collide = function(obj1, obj2) {
-	return obj1.x < obj2.x + obj2.width &&
-		   obj1.x + obj1.width > obj2.x &&
-		   obj1.y + obj1.height > obj2.y &&
-		   obj1.y < obj2.y + obj2.height;
+JUMP.collide = function(platform, obj2) {
+	return platform.colX < obj2.x + obj2.width &&
+		   platform.colX + platform.colWidth > obj2.x &&
+		   platform.colY + platform.colHeight > obj2.y &&
+		   platform.colY < obj2.y + obj2.height;
 };
 
 window.addEventListener("touchstart", function(e) {
@@ -415,10 +431,10 @@ window.addEventListener("touchstart", function(e) {
 
 function generatePlatforms() {	
 	if (platforms.length > 1) {
-		platforms.push(new Platform(205, Math.random() * 180 + 40, 70, 70));
+		platforms.push(new Platform(JUMP.WIDTH / 2, Math.random() * 180 + 40, 70, 70, null, JUMP.load.images['block']));
 	} else {
-		platforms.push(new Platform(205, Math.random() * 200 + 300, 70, 70));
-		platforms.push(new Platform(205, Math.random() * 180 + 40, 70, 70));
+		platforms.push(new Platform(JUMP.WIDTH / 2, Math.random() * 200 + 300, 70, 70, null, JUMP.load.images['block']));
+		platforms.push(new Platform(JUMP.WIDTH / 2, Math.random() * 180 + 40, 70, 70, null, JUMP.load.images['block']));
 	}
 }
 
