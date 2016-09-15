@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, 
+    user-scalable=no, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<head>
+	<title>Jump ahead</title>
+</head>
+<style type="text/css">
+	body { margin: 0; padding: 0; background: #000;}
+	canvas { display: block; position: absolute; top: 0; left: 0; right: 0; bottom: 0; margin: auto; background: #fff; width: 100%; height: 100%;}
+</style>
+<body>
+<canvas></canvas>
+<script type="text/javascript">
+window.requestAnimFrame = (function(){
+  return  window.requestAnimationFrame       || 
+          window.webkitRequestAnimationFrame || 
+          window.mozRequestAnimationFrame    || 
+          window.oRequestAnimationFrame      || 
+          window.msRequestAnimationFrame     || 
+          function( callback ){
+            window.setTimeout(callback, 1000 / 60);
+          };
+})();
+
+var platforms = [];
+
+var JUMP = {
+	WIDTH: 480,
+    HEIGHT: 800,
+    DEVICE_WIDTH: null,
+    DEVICE_HEIGHT: null,
+
+    scale: 1,
+    offset: { top: 0, left: 0 },
+
+    RATIO: null,
+    currentWidth: null,
+    currentHeight: null,
+    canvas: null,
+    ctx: null,
+
+	setup: function() {
+		JUMP.RATIO = JUMP.WIDTH / JUMP.HEIGHT;
+        JUMP.currentWidth = JUMP.WIDTH;
+        JUMP.currentHeight = JUMP.HEIGHT;
+
+        JUMP.canvas = document.getElementsByTagName('canvas')[0];
+        JUMP.canvas.width = JUMP.WIDTH;
+        JUMP.canvas.height = JUMP.HEIGHT;
+
+        JUMP.ctx = JUMP.canvas.getContext('2d');
+
+        JUMP.ua = navigator.userAgent.toLowerCase();
+        JUMP.android = JUMP.ua.indexOf('android') > -1 ? true : false;
+        JUMP.ios = ( JUMP.ua.indexOf('iphone') > -1 || JUMP.ua.indexOf('ipad') > -1  ) ? true : false;
+        
+        JUMP.STAGES.set(JUMP.STAGES.LOAD);
+
+        JUMP.load.image("block", "res/land_block.png");
+        JUMP.load.image("water", "res/land_water.png");
+        JUMP.load.image("back", "res/back.png");
+        JUMP.load.image("back", "res/back1.png");
+        JUMP.load.image("back", "res/back2.png");
+        JUMP.load.image("back", "res/back3.png");
+        JUMP.load.image("back", "res/back4.png");
+        JUMP.load.audio("sound", "res/audio.mp3");
+
+        JUMP.init();
+        JUMP.resize();
+        JUMP.loop();
+	},
+
+	init: function() {
+        JUMP.Player.init();
+		platforms.push(new Platform(205, 690, 70, 70, "static"));
+		generatePlatforms();
+	},
+
+	resize: function() {
+		JUMP.DEVICE_WIDTH = window.innerWidth;
+        JUMP.DEVICE_HEIGHT = window.innerHeight;
+
+        var ratio = JUMP.DEVICE_WIDTH / JUMP.DEVICE_HEIGHT,
+            scale = 1;
+
+        // WIDTH higher then HEIGHT
+        if (ratio > JUMP.RATIO) {
+            scale = JUMP.DEVICE_HEIGHT / JUMP.HEIGHT;
+            JUMP.scale = JUMP.currentWidth * scale / JUMP.WIDTH;
+        } // HEIGHT higher then WIDTH
+        else if (ratio < JUMP.RATIO) {
+            scale = JUMP.DEVICE_WIDTH / JUMP.WIDTH;            
+            JUMP.scale = JUMP.currentHeight * scale / JUMP.HEIGHT;
+        }
+
+        JUMP.currentHeight = JUMP.HEIGHT * scale;
+        JUMP.currentWidth = JUMP.WIDTH * scale;
+
+        JUMP.offset.top = JUMP.canvas.offsetTop;
+        JUMP.offset.left = JUMP.canvas.offsetLeft;
+
+        if (JUMP.android || JUMP.ios) {
+
+        }
+
+        JUMP.canvas.style.width = JUMP.currentWidth + 'px';
+        JUMP.canvas.style.height = JUMP.currentHeight + 'px';
+	},
+
+	update: function() {
+        JUMP.STAGES.update();
+    },
+
+    render: function() {
+        JUMP.Draw.rect(0, 0, JUMP.WIDTH, JUMP.HEIGHT, "#fff");
+        JUMP.STAGES.render();
+    },
+
+    loop: function() {
+        JUMP.update();
+        JUMP.render();
+        JUMP.load.render();
+        window.requestAnimFrame(JUMP.loop);
+    }
+};
+
+JUMP.load = {
+	images: [],
+	audios: [],
+	totalCount: 0,
+	count: 0,
+	barWidth: 0,
+	image: function(name, src) {
+		this.totalCount++;
+		var _self = this;
+		this.images[name] = new Image();
+		this.images[name].onload = function() {
+			_self.count++;
+		}
+		this.images[name].src = src;
+	},
+
+	audio: function(name, src) {
+		this.totalCount++;
+		var _self = this;
+		this.audios[name] = new Audio(src);
+		this.audios[name].onloadeddata = function() {
+			_self.count++;
+		}
+	},
+
+	render: function() {
+		var percent = this.count / this.totalCount;
+
+		JUMP.Draw.roundRect(40, 400, 400, 50, 10, false, "#000");
+		if (percent) {
+			var dx = 390 * percent - this.barWidth,
+				vx = dx * 0.025;
+			this.barWidth += vx;
+			JUMP.Draw.roundRect(45, 405, this.barWidth, 40, 6, true, "#000");
+			JUMP.Draw.text(~~(percent * 100) + "%", JUMP.WIDTH / 2, 210, 25);
+		}
+	}
+};
+
+JUMP.Player = {
+	x: 0,
+	y: 0,
+	constX: 0,
+	constY: 0,
+	width: 0,
+	height: 0,
+	isMoving: false,
+	getTarget: false,
+	grounded: true,
+	xOffset: 0,
+	movePlatform: null,
+	target: { x: null, y: null, constX: null, constY: null },
+
+	init: function() {
+		this.width = 60;
+		this.height = 60;
+		this.constX = this.x = (JUMP.WIDTH - this.width) / 2;
+		this.constY = this.y = JUMP.HEIGHT - 105;
+		this.target.constX = this.target.x = this.x + 10;
+		this.target.constY = this.target.y = this.y + 10;
+	},
+
+	update: function() {
+		if (this.getTarget) {
+			this.target.y -= 8;
+		}		
+
+		if (this.isMoving) {
+			var dy = this.target.y - 10 - this.y,
+				vy = dy * 0.1;
+
+			if (Math.abs(dy) < 0.04)
+				this.isMoving = false;
+
+			this.y += vy;
+		}
+
+	},
+
+	render: function() {
+		this.xOffset += 0.1;
+		if (this.isMoving) {
+			var distPT = this.constY - this.target.y + 10,
+				distPt = this.y - this.target.y + 10,
+				per = distPt / distPT;
+
+			per = per > 0.5 ? 1 - per : per;
+
+			this.x = this.constX - ~~(100 * per);
+		}
+		JUMP.Draw.rect(this.x, this.y, this.width, this.height, "#7484b0");
+		JUMP.Draw.rect(this.target.x, this.target.y, 40, 40, "red");
+	}
+};
+
+var Platform = function(x, y, width, height, type, image) {
+	this.type = type || null;
+	this.x = x || 0;
+	this.y = y || 0;
+	this.constX = this.x;
+	this.constY = this.y;
+	this.width = width || 60;
+	this.height = height || 60;
+
+	this.update = function() {
+
+	};
+
+	this.render = function() {
+		//JUMP.Draw.rect(this.x, this.y, this.width, this.height, "#97de9e");
+		JUMP.ctx.drawImage(JUMP.image['block'], 0, 0);
+	};
+};
+
+JUMP.Draw = {
+    clear: function() {
+        JUMP.ctx.clearRect(0, 0, JUMP.WIDTH, JUMP.HEIGHT);
+    },
+
+    rect: function(x, y, w, h, col) {
+        JUMP.ctx.fillStyle = col;
+        JUMP.ctx.fillRect(x, y, w, h);
+    },
+
+    roundRect: function(x, y, width, height, radius, fill, color) {
+		if (typeof radius === "undefined")
+			radius = 5;
+		JUMP.ctx.beginPath();
+		JUMP.ctx.moveTo(x + radius, y);
+		JUMP.ctx.lineTo(x + width - radius, y);
+		JUMP.ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+		JUMP.ctx.lineTo(x + width, y + height - radius);
+		JUMP.ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+		JUMP.ctx.lineTo(x + radius, y + height);
+		JUMP.ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+		JUMP.ctx.lineTo(x, y + radius);
+		JUMP.ctx.quadraticCurveTo(x, y, x + radius, y);
+		JUMP.ctx.closePath();
+		if (fill) {
+			JUMP.ctx.fillStyle = color;
+			JUMP.ctx.fill();
+		}
+		else {
+			JUMP.ctx.strokeStyle = color;
+			JUMP.ctx.stroke();
+		}
+	},
+
+    circle: function(x, y, r, col) {
+        JUMP.ctx.fillStyle = col;
+        JUMP.ctx.beginPath();
+        JUMP.ctx.arc(x - r / 2, y - r / 2, r, 0,  Math.PI * 2, true);
+        JUMP.ctx.closePath();
+        JUMP.ctx.fill();
+    },
+
+    text: function(string, x, y, size, col) {
+        JUMP.ctx.font = 'bold '+size+'px Monospace';
+        JUMP.ctx.fillStyle = col;
+        JUMP.ctx.fillText(string, x - JUMP.ctx.measureText(string).width / 2, y);
+    }
+};
+
+JUMP.STAGES = {
+	LOAD: "load",
+    MENU: "menu",
+    GAMEPLAY: "gameplay",
+    currentStage: null,
+
+    set: function(stage) {
+        this.currentStage = stage;
+        window.location.hash = stage;
+    },
+
+    checkStage: function() {
+        var stageForCheck = window.location.href.split('#')[1];
+        if (this.currentStage !== stageForCheck)
+            this.currentStage = stageForCheck;
+    },
+
+    update: function() {
+        this.checkStage();
+
+        switch (this.currentStage) {
+	    	case JUMP.STAGES.LOAD:
+	            // if (JUMP.image.totalCount == JUMP.image.count)
+	        		// this.set(JUMP.STAGES.GAMEPLAY);
+
+	        	break;
+            case this.MENU:
+                
+                break;
+            case this.GAMEPLAY:
+            	for (var i = 0; i < platforms.length; i++) {
+            		platforms[i].update();
+            		if (JUMP.collide(platforms[i], JUMP.Player) && !JUMP.Player.grounded && !JUMP.Player.isMoving && platforms[i].type !== "static") {
+            			JUMP.Player.movePlatform = platforms[i];
+            			JUMP.Player.grounded = true;
+            		} else {
+            			JUMP.Player.grounded = false;
+            		}
+
+	            	if (JUMP.Player.movePlatform) {
+	            		for (var j = 0; j < platforms.length; j++) {
+	            			var dy = platforms[0].constY - JUMP.Player.movePlatform.y,
+	            				vy = dy * 0.03;
+
+	            			platforms[j].y += vy;
+	            		}
+	            		JUMP.Player.y += vy;
+	            		JUMP.Player.target.y += vy;
+	            	}
+
+	            	if (JUMP.Player.movePlatform) {
+		            	if (Math.abs(dy) < 0.07) {
+		            		JUMP.Player.movePlatform.constX = platforms[0].constX;
+		            		JUMP.Player.movePlatform.constY = platforms[0].constY;
+		            		JUMP.Player.movePlatform.type = "static";
+		            		platforms[0].type = null;
+		            		var index = 0;
+		            		for (var i = 0; i < platforms.length; i++) {
+		            			if (platforms[i].type == "static") {
+		            				index = i;
+		            			}
+		            		}
+
+		            		platforms.splice(0, index);
+		            		JUMP.Player.movePlatform = null;
+		            		generatePlatforms();
+			            }
+			        }
+            	}
+            	JUMP.Player.update();
+                break;
+        }
+    },
+
+    render: function() {
+        switch (this.currentStage) {
+	    	case JUMP.STAGES.LOAD:
+
+	        	break;
+            case this.MENU:
+
+                break;
+            case this.GAMEPLAY:
+            	JUMP.Draw.rect(0, 0, JUMP.WIDTH, JUMP.HEIGHT, "#59d8f3");
+            	for (var i = 0; i < platforms.length; i++) {
+            		platforms[i].render();
+            	}
+            	JUMP.Player.render();
+                break;
+        }
+    }
+};
+
+JUMP.collide = function(obj1, obj2) {
+	return obj1.x < obj2.x + obj2.width &&
+		   obj1.x + obj1.width > obj2.x &&
+		   obj1.y + obj1.height > obj2.y &&
+		   obj1.y < obj2.y + obj2.height;
+};
+
+window.addEventListener("touchstart", function(e) {
+    e.preventDefault();
+    if (e.touches.length == 1) {
+	    var touch = e.touches[0];
+	    switch (JUMP.STAGES.currentStage) {
+	    	case JUMP.STAGES.LOAD:
+
+	        	break;
+	        case JUMP.STAGES.MENU:
+
+	            break;
+	        case JUMP.STAGES.GAMEPLAY:
+	        	if (!JUMP.Player.isMoving)
+	        		JUMP.Player.getTarget = true;
+	            break;
+	    }
+	}
+}, false);
+
+function generatePlatforms() {	
+	if (platforms.length > 1) {
+		platforms.push(new Platform(205, Math.random() * 180 + 40, 70, 70));
+	} else {
+		platforms.push(new Platform(205, Math.random() * 200 + 300, 70, 70));
+		platforms.push(new Platform(205, Math.random() * 180 + 40, 70, 70));
+	}
+}
+
+
+		// generatePlatform(300, 500);
+		// generatePlatform(40, 220);
+
+window.addEventListener("touchend", function(e) {
+	e.preventDefault();
+	switch (JUMP.STAGES.currentStage) {
+	    case JUMP.STAGES.LOAD:
+
+	        break;
+	    case JUMP.STAGES.MENU:
+
+	        break;
+	    case JUMP.STAGES.GAMEPLAY:
+	    	if (JUMP.Player.getTarget) {
+	    		JUMP.Player.grounded = false;
+	    		JUMP.Player.isMoving = true;
+	      		JUMP.Player.getTarget = false;
+	    	}
+	        break;
+	}
+}, false);
+
+window.addEventListener('load', JUMP.setup, false);
+window.addEventListener('resize', JUMP.resize, false);
+</script>
+</body>
+</html>
