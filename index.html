@@ -61,11 +61,7 @@ var JUMP = {
         JUMP.android = JUMP.ua.indexOf('android') > -1 ? true : false;
         JUMP.ios = ( JUMP.ua.indexOf('iphone') > -1 || JUMP.ua.indexOf('ipad') > -1  ) ? true : false;
         
-        JUMP.STAGES.set(JUMP.STAGES.LOAD);
-
-        JUMP.load.image("block", "res/block_land2_2.png");
-        // JUMP.load.image("water", "res/land_water.png");
-        // JUMP.load.audio("sound", "res/audio.mp3");
+        JUMP.STAGES.set(JUMP.STAGES.GAMEPLAY);
 
         JUMP.init();
         JUMP.resize();
@@ -74,7 +70,7 @@ var JUMP = {
 
 	init: function() {
         JUMP.Player.init();
-		platforms.push(new Platform(JUMP.WIDTH / 2, 750, 70, 70, "static", JUMP.load.images['block']));
+		platforms.push(new Platform(JUMP.WIDTH / 2, 720, 130, 130, "static", JUMP.load.images['block']));
 		generatePlatforms();
 	},
 
@@ -227,21 +223,25 @@ var Platform = function(x, y, width, height, type, image) {
 	this.y = y || 0;
 	this.constX = this.x;
 	this.constY = this.y;
-	this.width = image.width || width;
-	this.height = image.height || height;
-	this.colWidth = this.width * 0.8;
-	this.colHeight = this.height * 0.3;
-	this.colX = this.x - this.colWidth / 2;
-	this.colY = this.y - this.height * 0.4;
-	this.image = image;
+	this.width = width;
+	this.height = height;
 
 	this.update = function() {
-
 	};
 
 	this.render = function() {
-		JUMP.Draw.drawImage(this.image, this.x, this.y, 100, 100);
-		// JUMP.Draw.rect(this.colX, this.colY, this.colWidth, this.colHeight, "#97de9e");
+		// JUMP.Draw.drawImage(this.image, this.x, this.y, 100, 100);
+		var coords = toIso(this.x, this.y),
+			ox = (JUMP.WIDTH - this.width) / 2,
+			oy = this.height,
+			originCoords = toIso(-this.width / 2, -this.height / 2);
+
+		JUMP.ctx.save();
+		// JUMP.ctx.translate(originCoords.x, originCoords.y);
+		// JUMP.ctx.rotate(60 * Math.PI / 180);
+		JUMP.Draw.rect(ox + coords.x, oy + coords.y, this.width, this.height, "#fff");
+		//JUMP.Draw.rect(this.colX, this.colY, this.colWidth, this.colHeight, "#97de9e");
+		JUMP.ctx.restore();
 	};
 };
 
@@ -394,7 +394,7 @@ JUMP.STAGES = {
             	JUMP.Draw.text("Everything is loaded!!", 20, 100, 30, "#000");
                 break;
             case this.GAMEPLAY:
-            	JUMP.Draw.rect(0, 0, JUMP.WIDTH, JUMP.HEIGHT, "#91CEF7");
+            	JUMP.Draw.rect(0, 0, JUMP.WIDTH, JUMP.HEIGHT, "#EDEDED");
             	for (var i = 0; i < platforms.length; i++) {
             		platforms[i].render();
             	}
@@ -405,10 +405,10 @@ JUMP.STAGES = {
 };
 
 JUMP.collide = function(platform, obj2) {
-	return platform.colX < obj2.x + obj2.width &&
-		   platform.colX + platform.colWidth > obj2.x &&
-		   platform.colY + platform.colHeight > obj2.y &&
-		   platform.colY < obj2.y + obj2.height;
+	return platform.x < obj2.x + obj2.width &&
+		   platform.x + platform.width > obj2.x &&
+		   platform.y + platform.height > obj2.y &&
+		   platform.y < obj2.y + obj2.height;
 };
 
 window.addEventListener("touchstart", function(e) {
@@ -432,16 +432,18 @@ window.addEventListener("touchstart", function(e) {
 
 function generatePlatforms() {	
 	if (platforms.length > 1) {
-		platforms.push(new Platform(JUMP.WIDTH / 2, Math.random() * 180 + 40, 70, 70, null, JUMP.load.images['block']));
+		platforms.push(new Platform(JUMP.WIDTH / 2, Math.random() * 180 + 40, 130, 130, null));
 	} else {
-		platforms.push(new Platform(JUMP.WIDTH / 2, Math.random() * 200 + 300, 70, 70, null, JUMP.load.images['block']));
-		platforms.push(new Platform(JUMP.WIDTH / 2, Math.random() * 180 + 40, 70, 70, null, JUMP.load.images['block']));
+		platforms.push(new Platform(JUMP.WIDTH / 2, Math.random() * 200 + 300, 130, 130, null, JUMP.load.images['block']));
+		platforms.push(new Platform(JUMP.WIDTH / 2, Math.random() * 180 + 40, 130, 130, null, JUMP.load.images['block']));
 	}
 }
 
-
-		// generatePlatform(300, 500);
-		// generatePlatform(40, 220);
+function toIso(x, y) {
+  var newX = (x - y),
+      newY = (x + y) / 2;
+  return { x: newX, y: newY };
+}
 
 window.addEventListener("touchend", function(e) {
 	e.preventDefault();
