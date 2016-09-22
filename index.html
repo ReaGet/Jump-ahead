@@ -233,15 +233,9 @@ var Platform = function(x, y, width, height, type, image) {
 		// JUMP.Draw.drawImage(this.image, this.x, this.y, 100, 100);
 		var coords = toIso(this.x, this.y),
 			ox = (JUMP.WIDTH - this.width) / 2,
-			oy = this.height,
-			originCoords = toIso(-this.width / 2, -this.height / 2);
-
-		JUMP.ctx.save();
-		// JUMP.ctx.translate(originCoords.x, originCoords.y);
-		// JUMP.ctx.rotate(60 * Math.PI / 180);
-		JUMP.Draw.rect(ox + coords.x, oy + coords.y, this.width, this.height, "#fff");
+			oy = this.height;
+		JUMP.Draw.rect(ox, oy, this.width, this.height, "#fff");
 		//JUMP.Draw.rect(this.colX, this.colY, this.colWidth, this.colHeight, "#97de9e");
-		JUMP.ctx.restore();
 	};
 };
 
@@ -395,9 +389,18 @@ JUMP.STAGES = {
                 break;
             case this.GAMEPLAY:
             	JUMP.Draw.rect(0, 0, JUMP.WIDTH, JUMP.HEIGHT, "#EDEDED");
+
+				JUMP.ctx.save();
+				JUMP.ctx.translate(coords.x, coords.y);
+				JUMP.ctx.rotate(45 * Math.PI / 180);
+				var coords = toIso(this.x, this.y),
+					ox = (JUMP.WIDTH - this.width) / 2,
+					oy = this.height;
             	for (var i = 0; i < platforms.length; i++) {
             		platforms[i].render();
             	}
+            	JUMP.ctx.restore();
+            	
             	JUMP.Player.render();
                 break;
         }
