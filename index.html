@@ -12,11 +12,37 @@
 	<title>Jump ahead</title>
 </head>
 <style type="text/css">
-	body { margin: 0; padding: 0; background: #000;}
-	canvas { display: block; position: absolute; top: 0; left: 0; right: 0; bottom: 0; margin: auto; background: #fff; width: 100%; height: 100%;}
+	html { width: 100%; height: 100%; }
+	body { width: 100%; height: 100%; margin: 0; padding: 0; background: #000;}
+	#viewport {
+		height: 400px;
+		width: 240px;
+		top: 0;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		position: absolute;
+		margin: auto;
+		background: #EDEDED;
+		overflow: hidden;
+	}
+	.block {
+		position: absolute;
+		width: 100px;
+		height: 100px;
+		top: 50%;
+		left: 30%;
+		background: #FEFEFE;
+		border-radius: 3px;
+  		border-bottom: 2px solid #cbcbcb;
+  		border-right: 2px solid #cbcbcb;
+		transform: rotateX(60deg) rotateY(0deg) rotateZ(45deg) translate(0, 0);
+	}
 </style>
 <body>
-<canvas></canvas>
+<div id="viewport">
+	<div class="block"></div>
+</div>
 <script type="text/javascript">
 window.requestAnimFrame = (function(){
   return  window.requestAnimationFrame       || 
@@ -43,25 +69,20 @@ var JUMP = {
     RATIO: null,
     currentWidth: null,
     currentHeight: null,
-    canvas: null,
-    ctx: null,
+    VIEWPORT: null,
 
 	setup: function() {
 		JUMP.RATIO = JUMP.WIDTH / JUMP.HEIGHT;
         JUMP.currentWidth = JUMP.WIDTH;
         JUMP.currentHeight = JUMP.HEIGHT;
 
-        JUMP.canvas = document.getElementsByTagName('canvas')[0];
-        JUMP.canvas.width = JUMP.WIDTH;
-        JUMP.canvas.height = JUMP.HEIGHT;
-
-        JUMP.ctx = JUMP.canvas.getContext('2d');
+        JUMP.VIEWPORT = document.querySelector("#viewport");
 
         JUMP.ua = navigator.userAgent.toLowerCase();
         JUMP.android = JUMP.ua.indexOf('android') > -1 ? true : false;
         JUMP.ios = ( JUMP.ua.indexOf('iphone') > -1 || JUMP.ua.indexOf('ipad') > -1  ) ? true : false;
         
-        JUMP.STAGES.set(JUMP.STAGES.GAMEPLAY);
+        JUMP.STAGES.set(JUMP.STAGES.LOAD);
 
         JUMP.init();
         JUMP.resize();
@@ -69,9 +90,7 @@ var JUMP = {
 	},
 
 	init: function() {
-        JUMP.Player.init();
-		platforms.push(new Platform(JUMP.WIDTH / 2, 720, 130, 130, "static", JUMP.load.images['block']));
-		generatePlatforms();
+
 	},
 
 	resize: function() {
@@ -94,15 +113,15 @@ var JUMP = {
         JUMP.currentHeight = JUMP.HEIGHT * scale;
         JUMP.currentWidth = JUMP.WIDTH * scale;
 
-        JUMP.offset.top = JUMP.canvas.offsetTop;
-        JUMP.offset.left = JUMP.canvas.offsetLeft;
+        JUMP.offset.top = JUMP.VIEWPORT.offsetTop;
+        JUMP.offset.left = JUMP.VIEWPORT.offsetLeft;
 
         if (JUMP.android || JUMP.ios) {
 
         }
 
-        JUMP.canvas.style.width = JUMP.currentWidth + 'px';
-        JUMP.canvas.style.height = JUMP.currentHeight + 'px';
+        JUMP.VIEWPORT.style.width = JUMP.currentWidth + 'px';
+        JUMP.VIEWPORT.style.height = JUMP.currentHeight + 'px';
 	},
 
 	update: function() {
@@ -110,7 +129,7 @@ var JUMP = {
     },
 
     render: function() {
-        JUMP.Draw.rect(0, 0, JUMP.WIDTH, JUMP.HEIGHT, "#fff");
+
         JUMP.STAGES.render();
     },
 
@@ -161,64 +180,10 @@ JUMP.load = {
 	}
 };
 
-JUMP.Player = {
-	x: 0,
-	y: 0,
-	constX: 0,
-	constY: 0,
-	width: 0,
-	height: 0,
-	isMoving: false,
-	getTarget: false,
-	grounded: true,
-	xOffset: 0,
-	movePlatform: null,
-	target: { x: null, y: null, constX: null, constY: null },
-
-	init: function() {
-		this.width = 60;
-		this.height = 60;
-		this.constX = this.x = (JUMP.WIDTH - this.width) / 2;
-		this.constY = this.y = JUMP.HEIGHT - 105;
-		this.target.constX = this.target.x = this.x + 10;
-		this.target.constY = this.target.y = this.y + 10;
-	},
-
-	update: function() {
-		if (this.getTarget) {
-			this.target.y -= 8;
-		}		
-
-		if (this.isMoving) {
-			var dy = this.target.y - 10 - this.y,
-				vy = dy * 0.1;
-
-			if (Math.abs(dy) < 0.04)
-				this.isMoving = false;
-
-			this.y += vy;
-		}
-
-	},
-
-	render: function() {
-		this.xOffset += 0.1;
-		if (this.isMoving) {
-			var distPT = this.constY - this.target.y + 10,
-				distPt = this.y - this.target.y + 10,
-				per = distPt / distPT;
-
-			per = per > 0.5 ? 1 - per : per;
-
-			this.x = this.constX - ~~(100 * per);
-		}
-		JUMP.Draw.rect(this.x, this.y, this.width, this.height, "#7484b0");
-		// JUMP.Draw.rect(this.target.x, this.target.y, 40, 40, "red");
-	}
-};
 
 var Platform = function(x, y, width, height, type, image) {
 	this.type = type || null;
+	this.elem = document.createElement("div");
 	this.x = x || 0;
 	this.y = y || 0;
 	this.constX = this.x;
@@ -227,79 +192,12 @@ var Platform = function(x, y, width, height, type, image) {
 	this.height = height;
 
 	this.update = function() {
+
 	};
 
 	this.render = function() {
-		// JUMP.Draw.drawImage(this.image, this.x, this.y, 100, 100);
-		var coords = toIso(this.x, this.y),
-			ox = (JUMP.WIDTH - this.width) / 2,
-			oy = this.height;
-		JUMP.Draw.rect(ox, oy, this.width, this.height, "#fff");
-		//JUMP.Draw.rect(this.colX, this.colY, this.colWidth, this.colHeight, "#97de9e");
+
 	};
-};
-
-JUMP.Draw = {
-    clear: function() {
-        JUMP.ctx.clearRect(0, 0, JUMP.WIDTH, JUMP.HEIGHT);
-    },
-
-    rect: function(x, y, w, h, col) {
-        JUMP.ctx.fillStyle = col;
-        JUMP.ctx.fillRect(x, y, w, h);
-    },
-
-    roundRect: function(x, y, width, height, radius, fill, color) {
-		if (typeof radius === "undefined")
-			radius = 5;
-		JUMP.ctx.beginPath();
-		JUMP.ctx.moveTo(x + radius, y);
-		JUMP.ctx.lineTo(x + width - radius, y);
-		JUMP.ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-		JUMP.ctx.lineTo(x + width, y + height - radius);
-		JUMP.ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-		JUMP.ctx.lineTo(x + radius, y + height);
-		JUMP.ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-		JUMP.ctx.lineTo(x, y + radius);
-		JUMP.ctx.quadraticCurveTo(x, y, x + radius, y);
-		JUMP.ctx.closePath();
-		if (fill) {
-			JUMP.ctx.fillStyle = color;
-			JUMP.ctx.fill();
-		}
-		else {
-			JUMP.ctx.strokeStyle = color;
-			JUMP.ctx.stroke();
-		}
-	},
-
-    circle: function(x, y, r, col) {
-        JUMP.ctx.fillStyle = col;
-        JUMP.ctx.beginPath();
-        JUMP.ctx.arc(x - r / 2, y - r / 2, r, 0,  Math.PI * 2, true);
-        JUMP.ctx.closePath();
-        JUMP.ctx.fill();
-    },
-
-    text: function(string, x, y, size, col) {
-        JUMP.ctx.font = 'bold '+size+'px Monospace';
-        JUMP.ctx.fillStyle = col;
-        JUMP.ctx.fillText(string, x, y);
-    },
-
-    centeredText: function(string, x, y, size, col) {
-        JUMP.ctx.font = 'bold '+size+'px Monospace';
-        JUMP.ctx.fillStyle = col;
-        JUMP.ctx.fillText(string, x - JUMP.ctx.measureText(string).width / 2, y);
-    },
-
-    drawImage: function(image, x, y, width, height, angle) {
-    	JUMP.ctx.save();
-    	JUMP.ctx.translate(x - width / 2, y - height / 2);
-    	JUMP.ctx.rotate(angle);
-    	JUMP.ctx.drawImage(image, 0, 0, width, height);
-    	JUMP.ctx.restore();
-    }
 };
 
 JUMP.STAGES = {
@@ -324,57 +222,15 @@ JUMP.STAGES = {
 
         switch (this.currentStage) {
 	    	case JUMP.STAGES.LOAD:
-	            if (Math.round(JUMP.load.barWidth) == 390) {
+	            if (Math.round(JUMP.load.barWidth) == 390 || JUMP.load.totalCount == 0) {
 	        		this.set(JUMP.STAGES.GAMEPLAY);
-	        		// JUMP.load.audios["sound"].play();
 	            }
-
 	        	break;
             case this.MENU:
                 
                 break;
             case this.GAMEPLAY:
-            	for (var i = 0; i < platforms.length; i++) {
-            		platforms[i].update();
-            		if (JUMP.collide(platforms[i], JUMP.Player) && !JUMP.Player.grounded && !JUMP.Player.isMoving && platforms[i].type !== "static") {
-            			JUMP.Player.movePlatform = platforms[i];
-            			JUMP.Player.grounded = true;
-            		} else {
-            			JUMP.Player.grounded = false;
-            		}
-
-	            	if (JUMP.Player.movePlatform) {
-	            		for (var j = 0; j < platforms.length; j++) {
-	            			var dy = platforms[0].constY - JUMP.Player.movePlatform.y,
-	            				vy = dy * 0.03;
-
-	            			platforms[j].y += vy;
-	            			platforms[j].colY += vy;
-	            		}
-	            		JUMP.Player.y += vy;
-	            		JUMP.Player.target.y += vy;
-	            	}
-
-	            	if (JUMP.Player.movePlatform) {
-		            	if (Math.abs(dy) < 0.07) {
-		            		JUMP.Player.movePlatform.constX = platforms[0].constX;
-		            		JUMP.Player.movePlatform.constY = platforms[0].constY;
-		            		JUMP.Player.movePlatform.type = "static";
-		            		platforms[0].type = null;
-		            		var index = 0;
-		            		for (var i = 0; i < platforms.length; i++) {
-		            			if (platforms[i].type == "static") {
-		            				index = i;
-		            			}
-		            		}
-
-		            		platforms.splice(0, index);
-		            		JUMP.Player.movePlatform = null;
-		            		generatePlatforms();
-			            }
-			        }
-            	}
-            	JUMP.Player.update();
+            	
                 break;
         }
     },
@@ -388,20 +244,7 @@ JUMP.STAGES = {
             	JUMP.Draw.text("Everything is loaded!!", 20, 100, 30, "#000");
                 break;
             case this.GAMEPLAY:
-            	JUMP.Draw.rect(0, 0, JUMP.WIDTH, JUMP.HEIGHT, "#EDEDED");
 
-				JUMP.ctx.save();
-				JUMP.ctx.translate(coords.x, coords.y);
-				JUMP.ctx.rotate(45 * Math.PI / 180);
-				var coords = toIso(this.x, this.y),
-					ox = (JUMP.WIDTH - this.width) / 2,
-					oy = this.height;
-            	for (var i = 0; i < platforms.length; i++) {
-            		platforms[i].render();
-            	}
-            	JUMP.ctx.restore();
-            	
-            	JUMP.Player.render();
                 break;
         }
     }
@@ -426,20 +269,14 @@ window.addEventListener("touchstart", function(e) {
 
 	            break;
 	        case JUMP.STAGES.GAMEPLAY:
-	        	if (!JUMP.Player.isMoving)
-	        		JUMP.Player.getTarget = true;
+
 	            break;
 	    }
 	}
 }, false);
 
-function generatePlatforms() {	
-	if (platforms.length > 1) {
-		platforms.push(new Platform(JUMP.WIDTH / 2, Math.random() * 180 + 40, 130, 130, null));
-	} else {
-		platforms.push(new Platform(JUMP.WIDTH / 2, Math.random() * 200 + 300, 130, 130, null, JUMP.load.images['block']));
-		platforms.push(new Platform(JUMP.WIDTH / 2, Math.random() * 180 + 40, 130, 130, null, JUMP.load.images['block']));
-	}
+function generatePlatforms() {
+
 }
 
 function toIso(x, y) {
@@ -458,11 +295,7 @@ window.addEventListener("touchend", function(e) {
 
 	        break;
 	    case JUMP.STAGES.GAMEPLAY:
-	    	if (JUMP.Player.getTarget) {
-	    		JUMP.Player.grounded = false;
-	    		JUMP.Player.isMoving = true;
-	      		JUMP.Player.getTarget = false;
-	    	}
+
 	        break;
 	}
 }, false);
