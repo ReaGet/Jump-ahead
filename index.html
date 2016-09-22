@@ -63,7 +63,7 @@ var JUMP = {
         
         JUMP.STAGES.set(JUMP.STAGES.LOAD);
 
-        JUMP.load.image("block", "res/land_block.png");
+        JUMP.load.image("block", "res/block_land2_2.png");
         // JUMP.load.image("water", "res/land_water.png");
         // JUMP.load.audio("sound", "res/audio.mp3");
 
@@ -240,7 +240,7 @@ var Platform = function(x, y, width, height, type, image) {
 	};
 
 	this.render = function() {
-		JUMP.Draw.drawImage(this.image, this.x, this.y, this.width, this.height);
+		JUMP.Draw.drawImage(this.image, this.x, this.y, 100, 100);
 		// JUMP.Draw.rect(this.colX, this.colY, this.colWidth, this.colHeight, "#97de9e");
 	};
 };
@@ -299,9 +299,10 @@ JUMP.Draw = {
         JUMP.ctx.fillText(string, x - JUMP.ctx.measureText(string).width / 2, y);
     },
 
-    drawImage: function(image, x, y, width, height) {
+    drawImage: function(image, x, y, width, height, angle) {
     	JUMP.ctx.save();
     	JUMP.ctx.translate(x - width / 2, y - height / 2);
+    	JUMP.ctx.rotate(angle);
     	JUMP.ctx.drawImage(image, 0, 0, width, height);
     	JUMP.ctx.restore();
     }
@@ -393,7 +394,7 @@ JUMP.STAGES = {
             	JUMP.Draw.text("Everything is loaded!!", 20, 100, 30, "#000");
                 break;
             case this.GAMEPLAY:
-            	JUMP.Draw.rect(0, 0, JUMP.WIDTH, JUMP.HEIGHT, "#59d8f3");
+            	JUMP.Draw.rect(0, 0, JUMP.WIDTH, JUMP.HEIGHT, "#91CEF7");
             	for (var i = 0; i < platforms.length; i++) {
             		platforms[i].render();
             	}
